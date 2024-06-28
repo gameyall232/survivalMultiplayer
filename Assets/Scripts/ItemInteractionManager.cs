@@ -201,10 +201,9 @@ public sealed class ItemInteractionManager : NetworkBehaviour
 		ItemDescription itemDescription = ItemDescriptions[(int)itemType];
 		GameObject newItem = Instantiate(itemDescription.prefab);
 
-		Debug.Log(itemDescription.dataKey.ToString());
-		DataTag dataTag = new DataTag(itemDescription.dataKey, itemDescription.dataValue);
-		newItem.GetComponent<Item>().dataTag = 
-			new NetworkVariable<DataTag>(dataTag, NetworkVariableReadPermission.Owner, NetworkVariableWritePermission.Server);
+		DataTag dataTag = new(itemDescription.dataKey, itemDescription.dataValue);
+		newItem.GetComponent<Item>().initialDataTag = dataTag;
+		
 		newItem.transform.position = worldPos;
 		
 		newItem.GetComponent<NetworkObject>().Spawn(true);

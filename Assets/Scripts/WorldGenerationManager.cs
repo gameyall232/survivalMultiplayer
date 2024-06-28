@@ -15,7 +15,7 @@ public class WorldGenerationManager : MonoBehaviour
 		{
 			float range = 20;
 			Vector3 randomPos = new Vector3(Random.Range(-range, range), 0, Random.Range(-range, range));
-			StructureManager.SpawnStructure(ResourceNodeType.Tree, randomPos);
+			StructureManager.SpawnStructure(StructureType.Tree, randomPos);
 		}		
 	}
 }

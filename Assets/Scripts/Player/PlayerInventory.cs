@@ -166,7 +166,7 @@ public class PlayerInventory : NetworkBehaviour
 				case ItemType.Blueprint:
 					if (selection.DataKey == DataKeyType.WorkbenchId)
 					{
-						characterVisuals.StartPlacing(StructureManager.Instance.workbenchDescriptions[(int)selection.dataValue]);
+						characterVisuals.StartPlacing(StructureManager.Instance.structureDescriptions[(int)selection.dataValue]);
 					}
 					break;
 

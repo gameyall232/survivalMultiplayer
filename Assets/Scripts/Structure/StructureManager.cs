@@ -3,6 +3,13 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
+public enum StructureType
+{
+	OreDeposit,
+	Tree,
+	WoodworkingTable
+}
+
 public class StructureManager : NetworkBehaviour
 {
 	public static StructureManager Instance { get; private set; }
@@ -10,8 +17,7 @@ public class StructureManager : NetworkBehaviour
 	public static uint lastId = 0;
 	public static uint NewId() => lastId++;
 
-	[field: SerializeField] public StructureDescription[] resourceNodeDescriptions { get; private set; }
-	[field: SerializeField] public StructureDescription[] workbenchDescriptions { get; private set; }
+	[field: SerializeField] public StructureDescription[] structureDescriptions { get; private set; }
 
 	Dictionary<uint, Structure> spawnedStructures;
 
@@ -29,27 +35,17 @@ public class StructureManager : NetworkBehaviour
 		}
 		else
 		{
-			// Do NOT initialize structures dictionary
+			spawnedStructures = new();
+			RequestLoadStructuresRPC(NetworkManager.LocalClientId);
 		}
 	}
 
 	#region Spawn Structure
-	public static void SpawnStructure<T>(T structureType, Vector3 worldPos) where T : Enum
+	public static void SpawnStructure(StructureType structureType, Vector3 worldPos)
 	{
 		if (NetworkManager.Singleton.IsServer)
 		{
-			if (structureType is ResourceNodeType resourceNodeType)
-			{
-				Instance.AddStructureRPC(resourceNodeType, worldPos);
-			}
-			else if (structureType is WorkbenchType workbenchType)
-			{
-				Instance.AddStructureRPC(workbenchType, worldPos);
-			}
-			else
-			{
-				throw new ArgumentException("Type must be ResourceNodeType or WorkbenchType");
-			}
+			Instance.AddStructureRPC(structureType, worldPos);
 		}
 		else
 		{
@@ -58,24 +54,83 @@ public class StructureManager : NetworkBehaviour
 	}
 
 	[Rpc(SendTo.Everyone)]
-	public void AddStructureRPC(ResourceNodeType resourceNodeType, Vector3 worldPos)
+	public void AddStructureRPC(StructureType structureType, Vector3 worldPos)
 	{
-		Structure newResourceNode = Instantiate(resourceNodeDescriptions[(int)resourceNodeType].prefab).GetComponent<Structure>();
+		Structure newResourceNode = Instantiate(structureDescriptions[(int)structureType].prefab).GetComponent<Structure>();
 		newResourceNode.structureId = NewId();
 		spawnedStructures.Add(newResourceNode.structureId, newResourceNode);
 
 		newResourceNode.transform.position = worldPos;
 	}
-	[Rpc(SendTo.Everyone)]
-	public void AddStructureRPC(WorkbenchType workbenchType, Vector3 worldPos)
-	{
-		Structure newWorkbench = Instantiate(workbenchDescriptions[(int)workbenchType].prefab).GetComponent<Structure>();
-		newWorkbench.structureId = NewId();
-		spawnedStructures.Add(newWorkbench.structureId, newWorkbench);
-
-		newWorkbench.transform.position = worldPos;
-	}
 	#endregion Spawn Structure
+
+	#region Synchronize Structures
+	[Rpc(SendTo.Server)]
+	public void RequestLoadStructuresRPC(ulong newClientId)
+	{
+		LoadStructuresRPC(new StructurePackage(spawnedStructures), RpcTarget.Single(newClientId, RpcTargetUse.Temp));
+	}
+
+	[Rpc(SendTo.SpecifiedInParams)]
+	public void LoadStructuresRPC(StructurePackage structurePackage, RpcParams rpcParams)
+	{
+		BaseRpcTarget target = RpcTarget.Single(rpcParams.Receive.SenderClientId, RpcTargetUse.Persistent);
+		
+		for (int i = 0; i < structurePackage.structureIds.Length; i++)
+		{
+			LoadStructure(
+				structurePackage.structureIds[i],
+				structurePackage.structureTypes[i], 
+				structurePackage.positions[i],
+				structurePackage.durabilities[i]);
+		}
+
+		target.Dispose();
+	}
+	
+	void LoadStructure(uint structureId, StructureType structureType, Vector3 position, uint durability)
+	{
+	// 	Structure newResourceNode = Instantiate(structureDescriptions[(int)structureType].prefab).GetComponent<Structure>();
+	// 	newResourceNode.structureId = NewId();
+	// 	spawnedStructures.Add(newResourceNode.structureId, newResourceNode);
+
+	// 	newResourceNode.transform.position = worldPos;
+	}
+
+	public struct StructurePackage : INetworkSerializable
+	{
+		public uint[] structureIds;
+		public StructureType[] structureTypes;
+		public Vector3[] positions;
+		public uint[] durabilities;
+
+		public StructurePackage(Dictionary<uint, Structure> structuresDict)
+		{
+			int iterator = 0;
+			int length = structuresDict.Count;
+			structureIds = new uint[length];
+			structureTypes = new StructureType[length];
+			positions = new Vector3[length];
+			durabilities = new uint[length];
+
+			foreach (KeyValuePair<uint, Structure> kvp in structuresDict)
+			{
+				structureIds[iterator] = kvp.Key;
+				structureTypes[iterator] = kvp.Value.structureType;
+				positions[iterator] = kvp.Value.transform.position;
+				durabilities[iterator] = kvp.Value.GetComponent<Structure>().durability;
+				iterator++;
+			}
+		}
+
+		public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+		{
+			serializer.SerializeValue(ref structureIds);
+			serializer.SerializeValue(ref positions);
+			serializer.SerializeValue(ref durabilities);
+		}
+	}
+	#endregion Synchronize Structures
 
 	#region Despawn Structure
 	public static void DespawnStructure(uint structureId)
@@ -129,6 +184,7 @@ public class StructureManager : NetworkBehaviour
 public abstract class Structure : MonoBehaviour, ISelectable
 {
 	public uint structureId;
+	public StructureType structureType;
 	public uint durability;
 
 	[SerializeField] Material[] modelMaterials;

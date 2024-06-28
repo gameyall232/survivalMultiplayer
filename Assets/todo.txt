@@ -1,11 +1,9 @@
 FEATURES:
-- Inventory System
-	- Weight based
-	- Can store 9 different types of items (upgradeable?)
-	- Can select one of your slots to hold
 - Generate Trees
 
-- Update UI on inventory change
+- sync structures
+- item-item interactions
+- blueprints
 
 -hold e to pickup
 -show when inventory weight is full

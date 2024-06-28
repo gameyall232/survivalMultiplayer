@@ -18,7 +18,10 @@ public class Item : NetworkBehaviour, ISelectable
 
 	public override void OnNetworkSpawn()
 	{
-		dataTag.Value = initialDataTag;
+		if (IsServer)
+		{
+			dataTag.Value = initialDataTag;
+		}
 		CanPickup.OnValueChanged += (bool _, bool newBool) => { canPickup = newBool; };
 	}
 
@@ -102,7 +105,6 @@ public struct DataTag : INetworkSerializable
 
 	public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
 	{
-		Debug.Log(key.ToString());
 		serializer.SerializeValue(ref key);
 		serializer.SerializeValue(ref data);
 	}

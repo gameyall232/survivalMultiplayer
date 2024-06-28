@@ -10,7 +10,7 @@ public class PlayerInventoryEditor : Editor
 
 		PlayerInventory playerInventory = (PlayerInventory)target;
 
-		if (EditorApplication.isPlaying)
+		if (EditorApplication.isPlaying && playerInventory.IsSpawned)
 		{
 			EditorGUILayout.LabelField("Inventory");
 			foreach (var itemSlot in playerInventory?.inventory)
