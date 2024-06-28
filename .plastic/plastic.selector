@@ -1,0 +1,4 @@
+repository "survivalMultiplayer@gameyall232@cloud"
+  path "/"
+    smartbranch "/main/inventoryIdea" 
+     
